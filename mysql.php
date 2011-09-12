@@ -246,4 +246,4 @@ class mysql_model {
 
 }
 
-db::$mysql->cms->get_fields('content', true);
+var_dump(db::$mysql->cms->model('content', FALSE));
