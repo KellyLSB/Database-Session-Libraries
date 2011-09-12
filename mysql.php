@@ -2,7 +2,9 @@
 
 class db {
 	
-	private static $databases = array();
+	public static $mysql;
+	
+	private static $databases;
 	
 	public static function init() {
 		self::$databases = array(
@@ -13,15 +15,14 @@ class db {
 				'database' => 'yenn_cms'
 			)
 		);
+		foreach(self::$databases as $hand=>$db) {
+			self::$mysql->$hand = self::x($hand);
+		}
 	}
 	
-	public static function x($db) {
+	private static function x($db) {
 		$dbc = self::$databases[$db];
 		return new mysql($dbc['hostname'], $dbc['username'], $dbc['password'], $dbc['database'], $db);
-	}
-	
-	public static function m($db, $tbl, $id = FALSE) {
-		return new mysql_model($db, $tbl, $id);
 	}
 	
 } db::init();
@@ -103,6 +104,10 @@ class mysql {
 			return $fields;
 		}
 		else return false;
+	}
+	
+	public function model($table, $id = false) {
+		return new mysql_model($this->db_tbl['db'], $table, $id);
 	}
 	
 	private function _insert($array) {
@@ -241,4 +246,4 @@ class mysql_model {
 
 }
 
-db::x('cms')->get_fields('content', true);
+db::$mysql->cms->get_fields('content', true);
