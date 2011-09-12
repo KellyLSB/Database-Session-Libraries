@@ -79,8 +79,7 @@ class mysql {
 	}
 
 	public function select_by_id($table, $id, $vsprintf = FALSE) {
-		
-		$this->select($table, "WHERE `id` = '$id'", $vsprintf);
+		return $this->select($table, "WHERE `id` = '$id'", $vsprintf);
 	}
 
 	public function update_by_id($table, $array, $id, $vsprintf = FALSE) {
@@ -114,7 +113,7 @@ class mysql {
 		$return = array();
 		foreach($array as $key=>$val) 
 			$return[] = "`$key` = '$val'";
-		return explode(', ', $return);	
+		return implode(', ', $return);	
 	}
 	
 }
@@ -135,8 +134,13 @@ class mysql_result {
 		return $this->result->fetchAll();
 	}
 	
-	public function row() {
-		return $this->result->fetch();
+	public function row($type = 'assoc') {
+		if($type == 'assoc') $grab = PDO::FETCH_ASSOC;
+		else if($type == 'num') $grab = PDO::FETCH_NUM;
+		else if($type == 'object') $grab = PDO::FETCH_OBJ;
+		else $grab = 'FETCH_ASSOC';
+		
+		return $this->result->fetch($grab);
 	}
 	
 	public function count() {
@@ -175,11 +179,11 @@ class mysql_model {
 		
 		if(is_numeric($id)) {
 			if(!isset(self::$cache[$db][$tbl][$id]))
-				self::$cache[$db][$tbl][$id] = db::x($db)->select_by_id($tbl, $id)->row();
+				self::$cache[$db][$tbl][$id] = db::$mysql->$db->select_by_id($tbl, $id)->row();
 			
 			$this->data =& self::$cache[$db][$tbl][$id];
 		}
-		else $this->data = db::x($db)->get_fields($tbl, true);
+		else $this->data = db::$mysql->$db->get_fields($tbl, true);
 		
 		self::$this_memory = (memory_get_usage(true) - $init_mem);
 		self::$memory += self::$this_memory;
@@ -226,24 +230,27 @@ class mysql_model {
 				if($key = 'id') continue;
 				$this->$key = $val;
 			}
-			if(!$this->modified) return false;
+		}
+		if(!$this->modified) return false;
 			
-			$this->modified = false;
-			if($this->_id) db::x($this->_db)->update_by_id($this->_tbl, $this->data, $this->_id);
-			else {
-				$row = db::x($this->_db)->insert($this->_tbl, $this->data)->row();
-				$this->data['id'] = $row['id'];
-			}
+		$this->modified = false;
+		if($this->_id) db::$mysql->{$this->_db}->update_by_id($this->_tbl, $this->data, $this->_id);
+		else {
+			$row = db::$mysql->{$this->_db}->insert($this->_tbl, $this->data)->row();
+			$this->data['id'] = $row['id'];
 		}
 	}
 	
 	public function delete() {
 		if(isset($this->_id)) {
-			db::x($this->_db)->delete_by_id($this->_tbl, $this->_id);
+			db::$mysql->{$this->_db}->delete_by_id($this->_tbl, $this->_id);
 			unset(self::$cache[$this->_db][$this->_tbl][$this->_id]);
 		}
 	}
 
 }
 
-var_dump(db::$mysql->cms->model('content', FALSE));
+//var_dump(db::$mysql->cms->model('content', 2));
+$content = db::$mysql->cms->model('content', 1);
+$content->title = "Home";
+var_dump($content);
