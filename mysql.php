@@ -45,12 +45,10 @@ class mysql {
 		if(!$this->dbh) throw new Exception("Could not connect to database $u:$p@$h/$d");
 		
 		$this->db_tbl['db'] = $db;
-
-		return $this->dbh;
 	}
 	
 	public function query($sql, $vsprintf = FALSE) {
-		if($vsprintf) $sql = vsprintf($sql, $vsprintf);
+		if(is_array($vsprintf)) $sql = vsprintf($sql, $vsprintf);
 		else if($vsprintf !== FALSE) $sql = vsprintf($sql, $vsprintf);
 		
 		$time = microtime(true);
@@ -60,22 +58,31 @@ class mysql {
 		self::$time += $time;
 		self::$history[] = array('sql' => $sql, 'ms' => round($time,3), 'time' => date("m/d/Y h:i:s a"));
 		
-		return new mysql_result($result, $sql, $this->db_tbl);
+		/*echo "<pre>";
+		print_r(self::$history);
+		echo "</pre>";*/
+		
+		return new mysql_result($result, $sql, $this->db_tbl, $this->dbh);
+	}
+	
+	public function insert($table, $array, $vsprintf = FALSE) {
+		$update = $this->_insert($array);
+		return $this->query("INSERT INTO `$table` SET $update;", $vsprintf);
 	}
 
 	public function select($table, $conditions = '', $vsprintf = FALSE) {
 		$this->db_tbl['tbl'] = $table;
-		return $this->query("SELECT * FROM `$table` $conditions", $vsprintf);
+		return $this->query("SELECT * FROM `$table` $conditions;", $vsprintf);
 	}
 
 	public function update($table, $array, $conditions, $vsprintf = FALSE) {
 		$this->db_tbl['tbl'] = $table;
 		$update = $this->_insert($array);
-		return $this->query("UPDATE `$table` SET $update $conditions", $vsprintf);
+		return $this->query("UPDATE `$table` SET $update $conditions;", $vsprintf);
 	}
 
 	public function delete($table, $conditions, $vsprintf = FALSE) {
-		return $this->query("DELETE FROM `$table` $conditions", $vsprintf);
+		return $this->query("DELETE FROM `$table` $conditions;", $vsprintf);
 	}
 
 	public function select_by_id($table, $id, $vsprintf = FALSE) {
@@ -91,7 +98,7 @@ class mysql {
 	}
 
 	public function get_fields($table, $as_keys = false) {
-		$cols = $this->query("SHOW COLUMNS FROM ".$table);
+		$cols = $this->query("SHOW COLUMNS FROM `$table`;");
 		$fields = array();
 		
 		if($cols->count() > 0) {
@@ -119,15 +126,26 @@ class mysql {
 }
 
 class mysql_result {
+	
+	private $dbh;
 
 	public $result;
 	public $query;
 	public $db_tbl;
 	
-	public function __construct($result, $query, $db_tbl) {
+	public function __construct($result, $query, $db_tbl, $dbh) {
 		$this->result = $result;
 		$this->query = $sql;
 		$this->db_tbl = $db_tbl;
+		$this->dbh = $dbh;
+	}
+	
+	public function __destruct() {
+		$this->result->closeCursor();
+	}
+	
+	public function insertId() {
+		return $this->dbh->lastInsertId();
 	}
 	
 	public function all() {
@@ -159,7 +177,6 @@ class mysql_model {
 	
 	private $_tbl;
 	private $_db;
-	private $_id;
 	
 	private static $memory;
 	private static $this_memory;
@@ -175,7 +192,6 @@ class mysql_model {
 		$init_mem = memory_get_usage(true);
 		$this->_tbl = $tbl;
 		$this->_db = $db;
-		$this->_id = $id;
 		
 		if(is_numeric($id)) {
 			if(!isset(self::$cache[$db][$tbl][$id]))
@@ -187,7 +203,6 @@ class mysql_model {
 		
 		self::$this_memory = (memory_get_usage(true) - $init_mem);
 		self::$memory += self::$this_memory;
-		
 	}
 	
 	public function __destruct() {
@@ -217,7 +232,7 @@ class mysql_model {
 	}
 	
 	public function __toString() {
-		return "DB Model: #[$this->_id] in table $this->_tbl on DB $this->_db. Is using $this->memory bytes of memory.";
+		return "DB Model: #[$this->id] in table $this->_tbl on DB $this->_db. Is using $this->memory bytes of memory.";
 	}
 	
 	public function get_array() {
@@ -234,23 +249,23 @@ class mysql_model {
 		if(!$this->modified) return false;
 			
 		$this->modified = false;
-		if($this->_id) db::$mysql->{$this->_db}->update_by_id($this->_tbl, $this->data, $this->_id);
-		else {
-			$row = db::$mysql->{$this->_db}->insert($this->_tbl, $this->data)->row();
-			$this->data['id'] = $row['id'];
-		}
+		if($this->id) db::$mysql->{$this->_db}->update_by_id($this->_tbl, $this->data, $this->id);
+		else $this->data['id'] = db::$mysql->{$this->_db}->insert($this->_tbl, $this->data)->insertId();
 	}
 	
 	public function delete() {
-		if(isset($this->_id)) {
-			db::$mysql->{$this->_db}->delete_by_id($this->_tbl, $this->_id);
-			unset(self::$cache[$this->_db][$this->_tbl][$this->_id]);
+		if(isset($this->id)) {
+			db::$mysql->{$this->_db}->delete_by_id($this->_tbl, $this->id);
+			unset(self::$cache[$this->_db][$this->_tbl][$this->id]);
 		}
 	}
-
 }
 
 //var_dump(db::$mysql->cms->model('content', 2));
-$content = db::$mysql->cms->model('content', 1);
+$content = db::$mysql->cms->model('content', FALSE);
 $content->title = "Home";
-var_dump($content);
+$content->save();
+echo $content->title;
+echo "<br />(";
+echo $content->id;
+echo ")";
