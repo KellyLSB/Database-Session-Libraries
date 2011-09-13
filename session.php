@@ -6,6 +6,9 @@ class session {
 	private $flash = array();
 	private $udata = array();
 	
+	private $_cookie_name = '_session_cookie';
+	private $_cookie_url = 'gaiasenigma.com';
+	
 	public function __construct() {
 		$this->session = $this->_get();
 		
