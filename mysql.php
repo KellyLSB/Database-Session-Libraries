@@ -1,7 +1,8 @@
 <?php
 
 /**
- * MySQL Loader Library - With multiple DB support.
+ * Database Loader Library - With multiple DB support.
+ * Uses PDO supports multiple DB formats - ONLY MySQL has been tested
  *
  * @package default
  * @author Kelly Lauren Summer Becker
@@ -9,32 +10,42 @@
 
 class db {
 	
-	public static $mysql;
+	public static $db;
 	
 	private static $databases;
 	
 	public static function init() {
 		self::$databases = array(
 			'cms' => array(
+				'driver' => 'mysql',
 				'hostname' => 'localhost',
 				'username' => 'root',
 				'password' => '',
 				'database' => 'yenn_cms'
 			)
+			/*'sqlite' => array(
+				'driver' => 'sqlite',
+				'hostname' => '/opt/databases/mydb.sq3',
+				'username' => NULL,
+				'password' => NULL,
+				'database' => NULL
+			)*/
 		);
 		foreach(self::$databases as $hand=>$db) {
-			self::$mysql->$hand = self::x($hand);
+			self::$db->$hand = self::x($hand);
 		}
 	}
 	
 	private static function x($db) {
 		$dbc = self::$databases[$db];
-		return new mysql($dbc['hostname'], $dbc['username'], $dbc['password'], $dbc['database'], $db);
+		if($dbc['driver'] == 'mysql') $dsn = $dbc['driver'].':host='.$dbc['hostname'].';dbname='.$dbc['databse'].';';
+		if($dbc['driver'] == 'sqlite') $dsn = $dbc['driver'].':'.$dbc['hostname'].';';
+		return new database($dsn, $dbc['username'], $dbc['password'], $db);
 	}
 	
 } db::init();
 
-class mysql {
+class database {
 	
 	// PDO Object
 	private $dbh;
@@ -46,10 +57,10 @@ class mysql {
 	public static $time;
 	public static $history = array();
 	
-	public function __construct($h, $u, $p, $d = false, $db = false) {
-		$this->dbh = new PDO("mysql:host=$h;dbname=$d", $u, $p);
+	public function __construct($dsn, $u = false, $p = false, $db = false) {
+		$this->dbh = new PDO($dsn, $u, $p);
 		
-		if(!$this->dbh) throw new Exception("Could not connect to database $u:$p@$h/$d");
+		if(!$this->dbh) throw new Exception("Could not connect to database \"$u:$p@$dsn\"");
 		
 		$this->db_tbl['db'] = $db;
 	}
@@ -57,6 +68,8 @@ class mysql {
 	public function query($sql, $vsprintf = FALSE) {
 		if(is_array($vsprintf)) $sql = vsprintf($sql, $vsprintf);
 		else if($vsprintf !== FALSE) $sql = vsprintf($sql, $vsprintf);
+		
+		$sql = $this->_string_escape($sql);
 		
 		$time = microtime(true);
 		$result = $this->dbh->query($sql);
@@ -71,11 +84,11 @@ class mysql {
 			echo "</pre>";
 		}
 		
-		return new mysql_result($result, $sql, $this->db_tbl, $this->dbh);
+		return new database_result($result, $sql, $this->db_tbl, $this->dbh);
 	}
 	
 	public function insert($table, $array, $vsprintf = FALSE) {
-		$update = $this->_insert($array);
+		$update = $this->_fragment($array);
 		return $this->query("INSERT INTO `$table` SET $update;", $vsprintf);
 	}
 
@@ -86,7 +99,7 @@ class mysql {
 
 	public function update($table, $array, $conditions, $vsprintf = FALSE) {
 		$this->db_tbl['tbl'] = $table;
-		$update = $this->_insert($array);
+		$update = $this->_fragment($array);
 		return $this->query("UPDATE `$table` SET $update $conditions;", $vsprintf);
 	}
 
@@ -125,16 +138,47 @@ class mysql {
 		return new mysql_model($this->db_tbl['db'], $table, $id);
 	}
 	
-	private function _insert($array) {
+	private function _fragment($array) {
 		$return = array();
 		foreach($array as $key=>$val) 
 			$return[] = "`$key` = '$val'";
 		return implode(', ', $return);	
 	}
 	
+	private function _string_escape($str) 
+	{ 
+	   $len=strlen($str); 
+	    $escapeCount=0; 
+	    $targetString=''; 
+	    for($offset=0;$offset<$len;$offset++) { 
+	        switch($c=$str{$offset}) { 
+	            case "'": 
+	            // Escapes this quote only if its not preceded by an unescaped backslash 
+	                    if($escapeCount % 2 == 0) $targetString.="\\"; 
+	                    $escapeCount=0; 
+	                    $targetString.=$c; 
+	                    break; 
+	            case '"': 
+	            // Escapes this quote only if its not preceded by an unescaped backslash 
+	                    if($escapeCount % 2 == 0) $targetString.="\\"; 
+	                    $escapeCount=0; 
+	                    $targetString.=$c; 
+	                    break; 
+	            case '\\': 
+	                    $escapeCount++; 
+	                    $targetString.=$c; 
+	                    break; 
+	            default: 
+	                    $escapeCount=0; 
+	                    $targetString.=$c; 
+	        } 
+	    } 
+	    return $targetString; 
+	}
+	
 }
 
-class mysql_result {
+class database_result {
 	
 	private $dbh;
 
@@ -177,12 +221,12 @@ class mysql_result {
 	public function model() {
 		$row = $this->row();
 		$db_tbl = $this->db_tbl;
-		return db::m($db_tbl['db'], $db_tbl['tbl'], $row['id']);
+		return db::$db->{$db_tbl['db']}->model($db_tbl['tbl'], $row['id']);
 	}
 
 }
 
-class mysql_model {
+class database_model {
 	
 	private $_tbl;
 	private $_db;
@@ -204,11 +248,11 @@ class mysql_model {
 		
 		if(is_numeric($id)) {
 			if(!isset(self::$cache[$db][$tbl][$id]))
-				self::$cache[$db][$tbl][$id] = db::$mysql->$db->select_by_id($tbl, $id)->row();
+				self::$cache[$db][$tbl][$id] = db::$db->$db->select_by_id($tbl, $id)->row();
 			
 			$this->data =& self::$cache[$db][$tbl][$id];
 		}
-		else $this->data = db::$mysql->$db->get_fields($tbl, true);
+		else $this->data = db::$db->$db->get_fields($tbl, true);
 		
 		self::$this_memory = (memory_get_usage(true) - $init_mem);
 		self::$memory += self::$this_memory;
@@ -264,13 +308,13 @@ class mysql_model {
 		}
 			
 		$this->modified = false;
-		if($this->id) db::$mysql->{$this->_db}->update_by_id($this->_tbl, $save, $this->id);
-		else $this->data['id'] = db::$mysql->{$this->_db}->insert($this->_tbl, $save)->insertId();
+		if($this->id) db::$db->{$this->_db}->update_by_id($this->_tbl, $save, $this->id);
+		else $this->data['id'] = db::$db->{$this->_db}->insert($this->_tbl, $save)->insertId();
 	}
 	
 	public function delete() {
 		if(isset($this->id)) {
-			db::$mysql->{$this->_db}->delete_by_id($this->_tbl, $this->id);
+			db::$db->{$this->_db}->delete_by_id($this->_tbl, $this->id);
 			unset(self::$cache[$this->_db][$this->_tbl][$this->id]);
 		}
 	}

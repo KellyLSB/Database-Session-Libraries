@@ -10,6 +10,7 @@ class session {
 	private $_cookie_url = 'gaiasenigma.com';
 	
 	public function __construct() {
+		$this->_check_table();
 		$this->session = $this->_get();
 		
 		$this->udata = json_decode($this->session->udata, TRUE);
@@ -41,6 +42,8 @@ class session {
 		else $flash[$key] = $val;
 		
 		$this->flash = $flash;
+		
+		$this->_save();
 	}
 	
 	public function getflash($key, $preserve = FALSE) {
