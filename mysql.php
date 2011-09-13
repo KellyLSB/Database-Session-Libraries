@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * MySQL Loader Library - With multiple DB support.
+ *
+ * @package default
+ * @author Kelly Lauren Summer Becker
+ */
+
 class db {
 	
 	public static $mysql;
@@ -58,9 +65,11 @@ class mysql {
 		self::$time += $time;
 		self::$history[] = array('sql' => $sql, 'ms' => round($time,3), 'time' => date("m/d/Y h:i:s a"));
 		
-		/*echo "<pre>";
-		print_r(self::$history);
-		echo "</pre>";*/
+		if(DEBUG){
+			echo "<pre>";
+			print_r(self::$history);
+			echo "</pre>";
+		}
 		
 		return new mysql_result($result, $sql, $this->db_tbl, $this->dbh);
 	}
@@ -266,12 +275,3 @@ class mysql_model {
 		}
 	}
 }
-
-//var_dump(db::$mysql->cms->model('content', 2));
-$content = db::$mysql->cms->model('content', FALSE);
-$content->title = "Home";
-$content->save();
-echo $content->title;
-echo "<br />(";
-echo $content->id;
-echo ")";
