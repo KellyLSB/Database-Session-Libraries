@@ -242,15 +242,21 @@ class mysql_model {
 	public function save($data = false) {
 		if(is_array($data)) {
 			foreach($data as $key=>$val) {
-				if($key = 'id') continue;
+				if($key == 'id') continue;
 				$this->$key = $val;
 			}
 		}
 		if(!$this->modified) return false;
+		
+		$save = array();
+		foreach($this->data as $key=>$val) {
+			if($key == 'id') continue;
+			$save[$key] = $val;
+		}
 			
 		$this->modified = false;
-		if($this->id) db::$mysql->{$this->_db}->update_by_id($this->_tbl, $this->data, $this->id);
-		else $this->data['id'] = db::$mysql->{$this->_db}->insert($this->_tbl, $this->data)->insertId();
+		if($this->id) db::$mysql->{$this->_db}->update_by_id($this->_tbl, $save, $this->id);
+		else $this->data['id'] = db::$mysql->{$this->_db}->insert($this->_tbl, $save)->insertId();
 	}
 	
 	public function delete() {
