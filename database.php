@@ -38,10 +38,8 @@ class db {
 	
 	private static function x($db) {
 		$dbc = self::$databases[$db];
-		if($dbc['driver'] == 'mysql') $dsn = $dbc['driver'].':host='.$dbc['hostname'].';dbname='.$dbc['databse'].';';
+		if($dbc['driver'] == 'mysql') $dsn = $dbc['driver'].':host='.$dbc['hostname'].';dbname='.$dbc['database'].';';
 		if($dbc['driver'] == 'sqlite') $dsn = $dbc['driver'].':'.$dbc['hostname'].';';
-		
-		var_dump($dsn);
 		
 		return new database($dsn, $dbc['username'], $dbc['password'], $db);
 	}
