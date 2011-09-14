@@ -69,8 +69,6 @@ class database {
 		if(is_array($vsprintf)) $sql = vsprintf($sql, $vsprintf);
 		else if($vsprintf !== FALSE) $sql = vsprintf($sql, $vsprintf);
 		
-		$sql = $this->_string_escape($sql);
-		
 		$time = microtime(true);
 		$result = $this->dbh->query($sql);
 		$time = (microtime(true) - $time) * 1000;
@@ -140,8 +138,10 @@ class database {
 	
 	private function _fragment($array) {
 		$return = array();
-		foreach($array as $key=>$val) 
+		foreach($array as $key=>$val) {
+			$val = $this->_string_escape($val);
 			$return[] = "`$key` = '$val'";
+		}
 		return implode(', ', $return);	
 	}
 	
