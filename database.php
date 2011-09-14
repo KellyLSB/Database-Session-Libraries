@@ -189,7 +189,7 @@ class database_result {
 	
 	public function __construct($result, $query, $db_tbl, $dbh) {
 		$this->result = $result;
-		$this->query = $sql;
+		$this->query = $query;
 		$this->db_tbl = $db_tbl;
 		$this->dbh = $dbh;
 	}
