@@ -135,7 +135,7 @@ class database {
 	}
 	
 	public function model($table, $id = false) {
-		return new mysql_model($this->db_tbl['db'], $table, $id);
+		return new database_model($this->db_tbl['db'], $table, $id);
 	}
 	
 	private function _fragment($array) {
