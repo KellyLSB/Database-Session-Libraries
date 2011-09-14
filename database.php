@@ -82,6 +82,8 @@ class database {
 			echo "</pre>";
 		}
 		
+		var_dump($result);
+		
 		return new database_result($result, $sql, $this->db_tbl, $this->dbh);
 	}
 	
