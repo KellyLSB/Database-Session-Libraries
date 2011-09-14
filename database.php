@@ -20,8 +20,8 @@ class db {
 				'driver' => 'mysql',
 				'hostname' => 'localhost',
 				'username' => 'root',
-				'password' => '',
-				'database' => 'yenn_cms'
+				'password' => 'paperplate',
+				'database' => 'yenn-demo_cms'
 			)
 			/*'sqlite' => array(
 				'driver' => 'sqlite',
@@ -319,3 +319,9 @@ class database_model {
 		}
 	}
 }
+
+$content = db::$db->cms->model('content', 1);
+echo $content->title;
+echo "<br />(";
+echo $content->id;
+echo ")";
