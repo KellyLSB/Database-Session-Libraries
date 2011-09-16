@@ -64,8 +64,7 @@ class session {
 	}
     
     private function _check_table() {
-        /*
-        CREATE TABLE `_sessions` (
+        $sql = "CREATE TABLE IF NOT EXISTS `_sessions` (
 		  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
 		  `key` text NOT NULL,
 		  `remoteip` text NOT NULL,
@@ -74,8 +73,9 @@ class session {
 		  `flash` text,
 		  `udata` text,
 		  PRIMARY KEY (`id`)
-		) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;
-        */
+		) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;";
+		
+		db::$db->cms->query($sql);
     }
 	
 	private function _save() {
