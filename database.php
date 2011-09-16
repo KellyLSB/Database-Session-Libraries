@@ -14,8 +14,9 @@ class db {
 	
 	private static $databases;
 	
-	public static function init() {
-		self::$databases = array(
+	public static function init($databases = FALSE) {
+		if(!$databases) self::$databases = $databases;
+		else self::$databases = array(
 			'cms' => array(
 				'driver' => 'mysql',
 				'hostname' => 'localhost',
@@ -44,7 +45,7 @@ class db {
 		return new database($dsn, $dbc['username'], $dbc['password'], $db);
 	}
 	
-} db::init();
+}
 
 class database {
 	
@@ -77,11 +78,11 @@ class database {
 		self::$time += $time;
 		self::$history[] = array('sql' => $sql, 'ms' => round($time,3), 'time' => date("m/d/Y h:i:s a"));
 		
-		if(DEBUG){
+		/*if(DEBUG){
 			echo "<pre>";
 			print_r(self::$history);
 			echo "</pre>";
-		}
+		}*/
 		
 		return new database_result($result, $sql, $this->db_tbl, $this->dbh);
 	}
@@ -320,16 +321,3 @@ class database_model {
 		}
 	}
 }
-
-//$content = db::$db->cms->model('content', FALSE);
-//echo "<br /><br />";
-//var_dump($content);
-//$content->title = "New Page";
-//$content->save();
-//echo "<br /><br />";
-//echo $content->title;
-//echo "<br />(";
-//echo $content->id;
-//echo ")";
-
-//var_dump(db::$db->cms->select_by_id('content', 1));
