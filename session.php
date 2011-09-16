@@ -1,7 +1,5 @@
 <?php
 
-require_once "database.php";
-
 class session {
 	
 	private $session;
@@ -10,10 +8,15 @@ class session {
     
     private $modified = FALSE;
 	
-	private $_cookie_name = '_session_cookie';
-	private $_cookie_url = '.gaiasenigma.com';
+	private $_cookie_name;
+	private $_cookie_url;
+	private $_cookie_exp;
 	
-	public function __construct() {
+	public function __construct($cookie = '_session_cookie', $url = FALSE, $exp = 0) {
+		$this->_cookie_name = $cookie;
+		$this->_cookie_url = $url;
+		$this->_cookie_exp = $exp;
+		
         db::$db->cms->delete("_sessions", "WHERE `lasttime` < DATE_SUB(NOW(), INTERVAL 1 DAY)");
         
 		$this->_check_table();
@@ -95,7 +98,7 @@ class session {
 		$session->lasttime = date("Y-m-d H:i:s");
 		$session->save();
         
-    	setcookie($this->_cookie_name,$key,0,'/',$this->_cookie_url,false,false);
+    	setcookie($this->_cookie_name,$key,$this->_cookie_exp,'/',$this->_cookie_url,false,false);
 		
 		return $session;
 	}
@@ -110,7 +113,7 @@ class session {
     	$session->lasttime = date("Y-m-d H:i:s");
 		$session->save();
 
-		setcookie($this->_cookie_name,$key,0,'/',$this->_cookie_url,false,false);
+    	setcookie($this->_cookie_name,$key,$this->_cookie_exp,'/',$this->_cookie_url,false,false);
 
 		return $session;
 	}
