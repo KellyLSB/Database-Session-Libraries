@@ -66,15 +66,15 @@ class session {
     private function _check_table() {
         /*
         CREATE TABLE `_sessions` (
-            `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-            `key` text NOT NULL,
-            `remoteip` text NOT NULL,
-            `useragent` text NOT NULL,
-            `lasttime` datetime NOT NULL,
-            `flash` text,
-            `udata` text,
-            PRIMARY KEY (`id`)
-        ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+		  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+		  `key` text NOT NULL,
+		  `remoteip` text NOT NULL,
+		  `useragent` text NOT NULL,
+		  `lasttime` datetime NOT NULL,
+		  `flash` text,
+		  `udata` text,
+		  PRIMARY KEY (`id`)
+		) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;
         */
     }
 	
