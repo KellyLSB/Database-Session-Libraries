@@ -1,24 +1,30 @@
 <?php
 
+require_once "database.php";
+
 class session {
 	
 	private $session;
 	private $flash = array();
 	private $udata = array();
+    
+    private $modified = FALSE;
 	
 	private $_cookie_name = '_session_cookie';
-	private $_cookie_url = 'gaiasenigma.com';
+	private $_cookie_url = '.gaiasenigma.com';
 	
 	public function __construct() {
+        db::$db->cms->delete("_sessions", "WHERE `lasttime` < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+        
 		$this->_check_table();
 		$this->session = $this->_get();
 		
-		$this->udata = json_decode($this->session->udata, TRUE);
+		$this->udata = (object) json_decode($this->session->udata, TRUE);
 		$this->flash = json_decode($this->session->flash, TRUE);
 	}
 	
 	public function __destruct() {
-		$this->_save();
+        if($this->modified) $this->_save();
 	}
 	
 	public function __get($key) {
@@ -27,7 +33,7 @@ class session {
 	
 	public function __set($key, $val) {
 		$this->udata->$key = $val;
-		$this->_save();
+        $this->modified = TRUE;
 	}
 	
 	public function __isset($key) {
@@ -42,21 +48,39 @@ class session {
 		else $flash[$key] = $val;
 		
 		$this->flash = $flash;
+        
+        var_dump($this->flash);
 		
-		$this->_save();
+        $this->modified = TRUE;
 	}
 	
 	public function getflash($key, $preserve = FALSE) {
 		$flash = $this->flash;
 		$store = $flash[$key];
 		if(!$preserve) unset($flash[$key]);
+        $this->flash = $flash;
 		
 		return $store;
 	}
+    
+    private function _check_table() {
+        /*
+        CREATE TABLE `_sessions` (
+            `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+            `key` text NOT NULL,
+            `remoteip` text NOT NULL,
+            `useragent` text NOT NULL,
+            `lasttime` datetime NOT NULL,
+            `flash` text,
+            `udata` text,
+            PRIMARY KEY (`id`)
+        ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+        */
+    }
 	
 	private function _save() {
-		$this->session->udata = $this->udata;
-		$this->session->flash = $this->flash;
+		$this->session->udata = json_encode($this->udata);
+		$this->session->flash = json_encode($this->flash);
 		
 		$this->session->save();
 	}
@@ -65,9 +89,13 @@ class session {
 		if(!isset($_COOKIE[$this->_cookie_name])) return $this->_create();
 		
 		$key = $_COOKIE[$this->_cookie_name];
-		$session = db::$mysql->cms->select('_sessions', "WHERE `key` = '$key'")->model();
+		$session = db::$db->cms->select('_sessions', "WHERE `key` = '$key'")->model();                
+        if($session->id == NULL) return $this->_create();
+        
 		$session->lasttime = date("Y-m-d H:i:s");
 		$session->save();
+        
+    	setcookie($this->_cookie_name,$key,0,'/',$this->_cookie_url,false,false);
 		
 		return $session;
 	}
@@ -75,10 +103,11 @@ class session {
 	private function _create() {
 		$key = $this->_token(32);
 		
-		$session = db::$mysql->cms->model('_sessions', FALSE);
+		$session = db::$db->cms->model('_sessions', FALSE);
 		$session->key = $key;
 		$session->useragent = $_SERVER['HTTP_USER_AGENT'];
 		$session->remoteip = $_SERVER['REMOTE_ADDR'];
+    	$session->lasttime = date("Y-m-d H:i:s");
 		$session->save();
 
 		setcookie($this->_cookie_name,$key,0,'/',$this->_cookie_url,false,false);
@@ -136,3 +165,5 @@ class session {
 	}
 	
 }
+
+$s = new session;

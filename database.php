@@ -321,14 +321,15 @@ class database_model {
 	}
 }
 
-/*$content = db::$db->cms->model('content', 1);
-echo "<br /><br />";
-var_dump($content);
-echo "<br /><br />";
-echo $content->title;
-echo "<br />(";
-echo $content->id;
-echo ")";
-*/
+//$content = db::$db->cms->model('content', FALSE);
+//echo "<br /><br />";
+//var_dump($content);
+//$content->title = "New Page";
+//$content->save();
+//echo "<br /><br />";
+//echo $content->title;
+//echo "<br />(";
+//echo $content->id;
+//echo ")";
 
-var_dump(db::$db->cms->select_by_id('content', 1));
+//var_dump(db::$db->cms->select_by_id('content', 1));
