@@ -14,24 +14,37 @@ class db {
 	
 	private static $databases;
 	
-	public static function init($databases = FALSE) {
-		if(!$databases) self::$databases = $databases;
-		else self::$databases = array(
-			'cms' => array(
-				'driver' => 'mysql',
-				'hostname' => 'localhost',
-				'username' => 'root',
-				'password' => 'paperplate',
-				'database' => 'yenn-demo_cms'
-			)
-			/*'sqlite' => array(
-				'driver' => 'sqlite',
-				'hostname' => '/opt/databases/mydb.sq3',
-				'username' => NULL,
-				'password' => NULL,
-				'database' => NULL
-			)*/
-		);
+	public static function map($map_model) {
+		$id = substr(strstr($map_model,'('), 1, -1);
+		$db_tbl = explode('.',strstr($map_model,'(', TRUE));
+		
+		if($id)
+			return self::$db->{$db_tbl[0]}->select_by_id($db_tbl[1], $id)->model();
+		else
+			return self::$db->{$db_tbl[0]}->model($db_tbl[1], FALSE);
+	}
+	
+	public static function init($databases = false) {
+		if(is_array($databases)) self::$databases = $databases;
+		else { 
+			self::$databases = array(
+				'cms' => array(
+					'driver' => 'mysql',
+					'hostname' => 'localhost',
+					'username' => 'root',
+					'password' => 'paperplate',
+					'database' => 'yenn-demo_cms'
+				)
+				/*'sqlite' => array(
+					'driver' => 'sqlite',
+					'hostname' => '/opt/databases/mydb.sq3',
+					'username' => NULL,
+					'password' => NULL,
+					'database' => NULL
+				)*/
+			);
+		}
+		
 		foreach(self::$databases as $hand=>$db) {
 			self::$db->$hand = self::x($hand);
 		}
@@ -67,9 +80,9 @@ class database {
 		$this->db_tbl['db'] = $db;
 	}
 	
-	public function query($sql, $vsprintf = FALSE) {
+	public function query($sql, $vsprintf = false) {
 		if(is_array($vsprintf)) $sql = vsprintf($sql, $vsprintf);
-		else if($vsprintf !== FALSE) $sql = vsprintf($sql, $vsprintf);
+		else if($vsprintf !== false) $sql = vsprintf($sql, $vsprintf);
 		
 		$time = microtime(true);
 		$result = $this->dbh->query($sql);
@@ -87,35 +100,35 @@ class database {
 		return new database_result($result, $sql, $this->db_tbl, $this->dbh);
 	}
 	
-	public function insert($table, $array, $vsprintf = FALSE) {
+	public function insert($table, $array, $vsprintf = false) {
 		$update = $this->_fragment($array);
 		return $this->query("INSERT INTO `$table` SET $update;", $vsprintf);
 	}
 
-	public function select($table, $conditions = '', $vsprintf = FALSE) {
+	public function select($table, $conditions = '', $vsprintf = false) {
 		$this->db_tbl['tbl'] = $table;
 		return $this->query("SELECT * FROM `$table` $conditions;", $vsprintf);
 	}
 
-	public function update($table, $array, $conditions, $vsprintf = FALSE) {
+	public function update($table, $array, $conditions, $vsprintf = false) {
 		$this->db_tbl['tbl'] = $table;
 		$update = $this->_fragment($array);
 		return $this->query("UPDATE `$table` SET $update $conditions;", $vsprintf);
 	}
 
-	public function delete($table, $conditions, $vsprintf = FALSE) {
+	public function delete($table, $conditions, $vsprintf = false) {
 		return $this->query("DELETE FROM `$table` $conditions;", $vsprintf);
 	}
 
-	public function select_by_id($table, $id, $vsprintf = FALSE) {
+	public function select_by_id($table, $id, $vsprintf = false) {
 		return $this->select($table, "WHERE `id` = '$id'", $vsprintf);
 	}
 
-	public function update_by_id($table, $array, $id, $vsprintf = FALSE) {
+	public function update_by_id($table, $array, $id, $vsprintf = false) {
 		return $this->update($table, $array, "WHERE `id` = '$id'", $vsprintf);
 	}
 
-	public function delete_by_id($table, $id, $vsprintf = FALSE) {
+	public function delete_by_id($table, $id, $vsprintf = false) {
 		return $this->delete($table, "WHERE `id` = '$id'", $vsprintf);
 	}
 
@@ -134,8 +147,8 @@ class database {
 		else return false;
 	}
 	
-	public function model($table, $id = false) {
-		return new database_model($this->db_tbl['db'], $table, $id);
+	public function model($table, $id = false, $set_id = false) {
+		return new database_model($this->db_tbl['db'], $table, $id, $set_id);
 	}
 	
 	private function _fragment($array) {
@@ -220,10 +233,10 @@ class database_result {
 		return $this->result->rowCount();
 	}
 	
-	public function model() {
+	public function model($set_id = false) {
 		$row = $this->row();
 		$db_tbl = $this->db_tbl;
-		return db::$db->{$db_tbl['db']}->model($db_tbl['tbl'], $row['id']);
+		return db::$db->{$db_tbl['db']}->model($db_tbl['tbl'], $row['id'], $set_id);
 	}
 
 }
@@ -232,6 +245,8 @@ class database_model {
 	
 	private $_tbl;
 	private $_db;
+	private $_set_id;
+	private $_new = TRUE;
 	
 	private static $memory;
 	private static $this_memory;
@@ -239,22 +254,25 @@ class database_model {
 	
 	private $data;
 	
-	private $modified = FALSE;
+	private $modified = false;
 
-	public function __construct($db, $tbl, $id) {
+	public function __construct($db, $tbl, $id = false, $set_id = false) {
 		
 		// Determine memory usaage
 		$init_mem = memory_get_usage(true);
 		$this->_tbl = $tbl;
 		$this->_db = $db;
+		$this->_set_id = $set_id;
 		
-		if(is_numeric($id)) {
+		if($id) {
 			if(!isset(self::$cache[$db][$tbl][$id]))
 				self::$cache[$db][$tbl][$id] = db::$db->$db->select_by_id($tbl, $id)->row();
 			
 			$this->data =& self::$cache[$db][$tbl][$id];
 		}
 		else $this->data = db::$db->$db->get_fields($tbl, true);
+		
+		if($this->id) $this->_new = false;
 		
 		self::$this_memory = (memory_get_usage(true) - $init_mem);
 		self::$memory += self::$this_memory;
@@ -276,7 +294,7 @@ class database_model {
 	
 	public function __set($field, $nval) {
 		if(!array_key_exists($field, $this->data)) return;
-		if($field == 'id') return;
+		if($field == 'id'&&!$this->_set_id) return;
 		
 		$init_mem = memory_get_usage(true);
 		$this->modified = TRUE;
@@ -284,6 +302,10 @@ class database_model {
 		$this->data[$field] = $nval;
 		
 		self::$memory += (memory_get_usage(true) - $init_mem);
+	}
+	
+	public function _map() {
+		return $this->_db.'.'.$this->_tbl.'('.$this->id.')';
 	}
 	
 	public function __toString() {
@@ -297,7 +319,7 @@ class database_model {
 	public function save($data = false) {
 		if(is_array($data)) {
 			foreach($data as $key=>$val) {
-				if($key == 'id') continue;
+				if($key == 'id'&&!$this->_set_id) continue;
 				$this->$key = $val;
 			}
 		}
@@ -305,12 +327,12 @@ class database_model {
 		
 		$save = array();
 		foreach($this->data as $key=>$val) {
-			if($key == 'id') continue;
+			if($key == 'id'&&!$this->_set_id) continue;
 			$save[$key] = $val;
 		}
 			
 		$this->modified = false;
-		if($this->id) db::$db->{$this->_db}->update_by_id($this->_tbl, $save, $this->id);
+		if($this->id&&!$this->_new) db::$db->{$this->_db}->update_by_id($this->_tbl, $save, $this->id);
 		else $this->data['id'] = db::$db->{$this->_db}->insert($this->_tbl, $save)->insertId();
 	}
 	

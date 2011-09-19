@@ -1,6 +1,6 @@
 <?php
 
-class session {
+class ysession {
 	
 	private $session;
 	private $flash = array();
@@ -17,12 +17,12 @@ class session {
 		$this->_cookie_url = $url;
 		$this->_cookie_exp = $exp;
 		
-        db::$db->cms->delete("_sessions", "WHERE `lasttime` < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+        y::$db->cms->delete("_sessions", "WHERE `lasttime` < DATE_SUB(NOW(), INTERVAL 1 DAY)");
         
 		$this->_check_table();
 		$this->session = $this->_get();
 		
-		$this->udata = (object) json_decode($this->session->udata, TRUE);
+		$this->udata = json_decode($this->session->udata, TRUE);
 		$this->flash = json_decode($this->session->flash, TRUE);
 	}
 	
@@ -31,16 +31,16 @@ class session {
 	}
 	
 	public function __get($key) {
-		return $this->udata->$key;
+		return $this->udata[$key];
 	}
 	
 	public function __set($key, $val) {
-		$this->udata->$key = $val;
+		$this->udata[$key] = $val;
         $this->modified = TRUE;
 	}
 	
 	public function __isset($key) {
-		return isset($this->udata->$key);
+		return isset($this->udata[$key]);
 	} 
 	
 	public function setflash($key, $val) {
@@ -51,9 +51,7 @@ class session {
 		else $flash[$key] = $val;
 		
 		$this->flash = $flash;
-        
-        var_dump($this->flash);
-		
+        		
         $this->modified = TRUE;
 	}
 	
@@ -62,23 +60,24 @@ class session {
 		$store = $flash[$key];
 		if(!$preserve) unset($flash[$key]);
         $this->flash = $flash;
+
+		if(!$preserve) $this->modified = TRUE;
 		
 		return $store;
 	}
     
     private function _check_table() {
         $sql = "CREATE TABLE IF NOT EXISTS `_sessions` (
-		  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-		  `key` text NOT NULL,
+		  `id` varchar(32) NOT NULL,
 		  `remoteip` text NOT NULL,
 		  `useragent` text NOT NULL,
 		  `lasttime` datetime NOT NULL,
 		  `flash` text,
 		  `udata` text,
 		  PRIMARY KEY (`id`)
-		) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;";
+		) ENGINE=MyISAM DEFAULT CHARSET=latin1;";
 		
-		db::$db->cms->query($sql);
+		y::$db->cms->query($sql);
     }
 	
 	private function _save() {
@@ -91,29 +90,29 @@ class session {
 	private function _get() {
 		if(!isset($_COOKIE[$this->_cookie_name])) return $this->_create();
 		
-		$key = $_COOKIE[$this->_cookie_name];
-		$session = db::$db->cms->select('_sessions', "WHERE `key` = '$key'")->model();                
+		$id = $_COOKIE[$this->_cookie_name];
+		$session = y::$db->cms->select('_sessions', "WHERE `id` = '$id'")->model();
         if($session->id == NULL) return $this->_create();
         
 		$session->lasttime = date("Y-m-d H:i:s");
 		$session->save();
         
-    	setcookie($this->_cookie_name,$key,$this->_cookie_exp,'/',$this->_cookie_url,false,false);
+	    setcookie($this->_cookie_name, $id, $this->_cookie_exp, '/', $this->_cookie_url);
 		
 		return $session;
 	}
 	
 	private function _create() {
-		$key = $this->_token(32);
+		$id = $this->_token(32);
 		
-		$session = db::$db->cms->model('_sessions', FALSE);
-		$session->key = $key;
-		$session->useragent = $_SERVER['HTTP_USER_AGENT'];
+		$session = y::$db->cms->model('_sessions', FALSE, TRUE);
+		$session->id = $id;
+		$session->useragent = @$_SERVER['HTTP_USER_AGENT'];
 		$session->remoteip = $_SERVER['REMOTE_ADDR'];
     	$session->lasttime = date("Y-m-d H:i:s");
 		$session->save();
 
-    	setcookie($this->_cookie_name,$key,$this->_cookie_exp,'/',$this->_cookie_url,false,false);
+	    setcookie($this->_cookie_name, $id, $this->_cookie_exp, '/', $this->_cookie_url);
 
 		return $session;
 	}
@@ -168,5 +167,3 @@ class session {
 	}
 	
 }
-
-$s = new session;
