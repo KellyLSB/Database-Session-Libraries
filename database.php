@@ -4,8 +4,8 @@
  * Database Loader Library - With multiple DB support.
  * Uses PDO supports multiple DB formats - ONLY MySQL has been tested
  *
- * @package default
  * @author Kelly Lauren Summer Becker
+ * @license CC BY-SA 3.0 http://creativecommons.org/licenses/by-sa/3.0/
  */
 class db {
 	
