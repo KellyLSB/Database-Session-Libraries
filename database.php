@@ -31,7 +31,7 @@ class db {
 		$db_tbl = explode('.',strstr($map_model,'(', TRUE));
 		
 		if($id)
-			return self::$db->{$db_tbl[0]}->select_by_id($db_tbl[1], $id)->model();
+			return self::$db->{$db_tbl[0]}->model($db_tbl[1], $id);
 		else
 			return self::$db->{$db_tbl[0]}->model($db_tbl[1], FALSE);
 	}
@@ -60,8 +60,8 @@ class db {
 					'driver' => 'mysql',
 					'hostname' => 'localhost',
 					'username' => 'root',
-					'password' => 'paperplate',
-					'database' => 'yenn-demo_cms'
+					'password' => '',
+					'database' => 'yma11_ex'
 				)
 				/*'sqlite' => array(
 					'driver' => 'sqlite',
@@ -103,7 +103,7 @@ class db {
 		return new database($dsn, $dbc['username'], $dbc['password'], $db);
 	}
 	
-}
+} db::init();
 
 class database {
 	
@@ -430,8 +430,26 @@ class database_result {
 	 * @return void
 	 * @author Kelly Lauren Summer Becker
 	 */
-	public function all() {
-		return $this->result->fetchAll();
+	public function all($type = 'assoc') {
+		if($type == 'assoc') $grab = PDO::FETCH_ASSOC;
+		else if($type == 'num') $grab = PDO::FETCH_NUM;
+		else if($type == 'object') $grab = PDO::FETCH_OBJ;
+		
+		/**
+		 * Return a list of Models
+		 */
+		else if($type == 'model') {
+			$array = $this->result->fetchAll();
+			$return = array();
+			foreach($array as $key=>$result) {
+				$db_tbl = $this->db_tbl;
+				$return[$key] = db::$db->{$db_tbl['db']}->model($db_tbl['tbl'], $result['id']);
+			} return $return;
+		}
+		
+		else $grab = PDO::FETCH_ASSOC;
+		
+		return $this->result->fetchAll($grab);
 	}
 	
 	/**
@@ -445,7 +463,8 @@ class database_result {
 		if($type == 'assoc') $grab = PDO::FETCH_ASSOC;
 		else if($type == 'num') $grab = PDO::FETCH_NUM;
 		else if($type == 'object') $grab = PDO::FETCH_OBJ;
-		else $grab = 'FETCH_ASSOC';
+		else if($type == 'model') return $this->model();
+		else $grab = PDO::FETCH_ASSOC;
 		
 		return $this->result->fetch($grab);
 	}
